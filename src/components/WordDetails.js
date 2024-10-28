@@ -3,7 +3,8 @@ import audioMap from '../data/nufi_audio_map.json'; // Import audio map for path
 import nufiDictionary from '../data/nufi_dictionary_data.json'; // Import dictionary data
 
 // Helper function to clean words
-const cleanWord = (word) => word.replace(/[.,!?;:()"/]+$/, "").trim();
+// const cleanWord = (word) => word.replace(/[.,!?;:()"/]+$/, "").trim();
+const cleanWord = (word) => word.replace(/[.,!?;:()"/]+$/, "").trim().toLowerCase();
 
 // Check if a word is clickable (exists in audioMap)
 const isClickable = (word) => !!audioMap[cleanWord(word)];
@@ -34,54 +35,59 @@ const useAudioPlayer = () => {
   return { audioRef, playAudio };
 };
 
-// Function to render clickable text with specific click and double-click behavior
 const renderClickableText = (text, playAudio, onWordDoubleClick) => {
-  // Clean the text by removing specific HTML tags
-  const cleanedText = text
-    .replace(/<tag_def>/g, "")         // Remove <tag_def> tags
-    .replace(/<\/tag_def>/g, "")       // Remove </tag_def> tags
-    .replace(/<br\s*\/?>/g, "\n");     // Replace <br> tags with newline for line breaks
+  // Split text by tags and keep the tags as part of the tokens
+  const tokens = text.split(/(<tag_def>|<\/tag_def>|<b>|<\/b>|<br\s*\/?>|\s+|[.,!?;:])/);
 
-  // Split cleaned text into words, spaces, and punctuation
-  const words = cleanedText.split(/(\s+|[.,!?;:])/);
+  return tokens.map((token, index) => {
+    const clean = cleanWord(token); // Normalize to lowercase for consistent matching
 
-  return words.map((word, index) => {
-    const clean = cleanWord(word);
+    // Handle specific tags as React components
+    if (token === "<tag_def>") {
+      return <span key={`${index}-open-tag-def`} className="font-semibold">{/* Opening tag_def */}</span>;
+    }
+    if (token === "</tag_def>") {
+      return <React.Fragment key={`${index}-close-tag-def`}></React.Fragment>; // Closing tag_def
+    }
+    if (token === "<b>") {
+      return <strong key={`${index}-open-bold`}>{/* Opening bold */}</strong>;
+    }
+    if (token === "</b>") {
+      return <React.Fragment key={`${index}-close-bold`}></React.Fragment>; // Closing bold
+    }
+    if (token === "<br>" || token === "<br />") {
+      return <br key={`${index}-br`} />;
+    }
 
-    let clickTimeout; // Timeout variable to manage click events
-
+    // Render clickable words with audio
     if (audioMap[clean]) {
-      // Word exists in audioMap, apply blue color and underline for audio playback
       return (
         <span
           key={index}
-          onClick={() => {
-            clickTimeout = setTimeout(() => playAudio(clean), 250); // Trigger playAudio after 250ms delay
-          }}
-          onDoubleClick={() => {
-            clearTimeout(clickTimeout); // Clear the click timeout if double-click is detected
-            onWordDoubleClick(clean);   // Trigger double-click action to show definition
-          }}
-          className="text-blue-700 underline cursor-pointer" // Blue color, underline, and pointer cursor
+          onClick={() => playAudio(clean)}
+          onDoubleClick={() => onWordDoubleClick(clean)}
+          className="text-blue-700 underline cursor-pointer"
         >
-          {word}
-        </span>
-      );
-    } else if (keywordMap[clean]) {
-      // Word exists in keywordMap but not in audioMap, apply black color, no underline
-      return (
-        <span
-          key={index}
-          onDoubleClick={() => onWordDoubleClick(clean)} // Only double-click to show definition
-          className="text-black cursor-pointer" // Black color, no underline
-        >
-          {word}
+          {token}
         </span>
       );
     }
 
-    // For words that are neither in audioMap nor keywordMap
-    return <span key={index}>{word}</span>;
+    // Render clickable words with definition but no audio
+    if (keywordMap[clean]) {
+      return (
+        <span
+          key={index}
+          onDoubleClick={() => onWordDoubleClick(clean)}
+          className="text-black cursor-pointer"
+        >
+          {token}
+        </span>
+      );
+    }
+
+    // Render non-clickable words
+    return <span key={index}>{token}</span>;
   });
 };
 
