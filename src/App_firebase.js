@@ -372,7 +372,7 @@ const Clafrica ={
   "i-5":"ɨ̂"}
 
 
-// Function to apply Clafrica mapping to transform input for matching
+// Function to apply Clafrica mapping
 const applyClafricaMapping = (input) => {
   let transformedInput = input;
   const sortedEntries = Object.entries(Clafrica).sort(([keyA], [keyB]) => keyB.length - keyA.length);
@@ -391,7 +391,7 @@ const App = () => {
   // Fetch data conditionally based on environment
   useEffect(() => {
     const fetchData = async () => {
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === 'development') { // Change to process.env.NODE_ENV === 'production' when ready
         // Use local data in development
         setWordsData(nufi_dictionary_data);
       } else {
@@ -408,25 +408,41 @@ const App = () => {
     fetchData();
   }, []);
 
-  // Handle search input changes without transforming input for the display
+  // // Handle search input changes
   const handleInputChange = (event) => {
-    setSearchQuery(event.target.value); // Keep the user input unchanged in the search box
+    let userInput = event.target.value;
+    const transformedInput = applyClafricaMapping(userInput);
+    setSearchQuery(transformedInput);
+    setSelectedWord(null);
   };
 
-  // Filter words based on the transformed input while keeping the original input
-  const transformedSearchQuery = applyClafricaMapping(searchQuery);
-  const filteredWords = transformedSearchQuery
-    ? wordsData.filter(wordEntry => {
-        if (!wordEntry.word) return false; // Handle cases where word might be undefined
-        const wordLower = wordEntry.word.toLowerCase();
-        return wordLower.startsWith(transformedSearchQuery.toLowerCase());
-      })
+  // // Handle search input changes
+  // const handleInputChange = (event) => {
+  //   let userInput = event.target.value;
+  //   const transformedInput = applyClafricaMapping(userInput);
+  //   setSearchQuery(userInput);
+  //   setSelectedWord(null);
+  // };
+
+  
+
+  // Handle key press events for the search bar
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter' && filteredWords.length > 0) {
+      setSelectedWord(filteredWords[0]);
+      setSearchQuery('');
+    }
+  };
+
+  // Filter words that start with the search query
+  const filteredWords = searchQuery
+    ? wordsData.filter(word => word.word.toLowerCase().startsWith(searchQuery.toLowerCase()))
     : [];
 
   // Handle word selection
   const onWordClick = (word) => {
     setSelectedWord(word);
-    setSearchQuery(''); // Clear the search query
+    setSearchQuery('');
   };
 
   // Handle double-click to find word definition
@@ -449,6 +465,7 @@ const App = () => {
           <SearchBar
             searchQuery={searchQuery}
             setSearchQuery={handleInputChange}
+            handleKeyPress={handleKeyPress}
           />
         </div>
       </header>
