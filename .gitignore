@@ -4,9 +4,20 @@
 /node_modules
 /.pnp
 .pnp.js
+.firebase 
+serviceAccountKey_dictionnaire-nufi-firebase-adminsdk.json
 
 nufi_audio_map.json
 nufi_dictionary_data.json
+database.rules.json
+firestore.rules
+.firebase/
+firebase.json
+App_firebase_test.js
+firebaseConfig.js
+.firebaserc
+
+firestore.indexes.json
 # testing
 /coverage
 
