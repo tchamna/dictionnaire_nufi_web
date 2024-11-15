@@ -48,6 +48,18 @@ data_path = r"C:\Users\tcham\OneDrive\Documents\Workspace_Codes\DictionnaireNufi
 with open(data_path) as f:
     nufi_dictionary_data = json.load(f)
 
+
+# Extract data starting from "saccage"
+nufi_dictionary_data_part2 = []
+start_collecting = False
+
+for entry in nufi_dictionary_data:
+    if entry.get("word") == "saccage":
+        start_collecting = True
+    if start_collecting:
+        nufi_dictionary_data_part2.append(entry)
+
+
 # Function to upload data in batches to Firestore
 def upload_data_in_batches(collection_name, data, batch_size=500):
     collection_ref = db.collection(collection_name)
@@ -73,4 +85,5 @@ def upload_data_in_batches(collection_name, data, batch_size=500):
             print(f"Error uploading entry {entry}: {e}")
 
 # Run the batch upload function
-upload_data_in_batches("nufi_dictionary", nufi_dictionary_data)
+# upload_data_in_batches("nufi_dictionary", nufi_dictionary_data)
+upload_data_in_batches("nufi_dictionary", nufi_dictionary_data_part2)

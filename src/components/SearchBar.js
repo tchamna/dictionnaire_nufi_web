@@ -1,8 +1,10 @@
+
+
 import React from 'react';
 
 const SearchBar = ({ searchQuery, setSearchQuery, handleKeyPress }) => {
   return (
-    <div className="w-full max-w-screen-lg mx-auto"> {/* Center and set max width */}
+    <div className="w-full max-w-screen-lg mx-auto">
       <input
         type="text"
         placeholder="Cāk njâ'wú séè lè..."

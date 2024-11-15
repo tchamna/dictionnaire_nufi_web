@@ -7,27 +7,27 @@
                 "examples": [
                     {
                         "native": "kā'",
-                        "english": "l'assiette;"
+                        "french": "l'assiette;"
                     },
                     {
                         "native": "kà'",
-                        "english": "la médecine, la magie;"
+                        "french": "la médecine, la magie;"
                     },
                     {
                         "native": "ǎ pʉ́ɑ́'",
-                        "english": "il a cassé;"
+                        "french": "il a cassé;"
                     },
                     {
                         "native": "ǎ pʉ́ɑ́",
-                        "english": "il est devenu fou;"
+                        "french": "il est devenu fou;"
                     },
                     {
                         "native": "ǒ sì kāāsī",
-                        "english": "ne te balade pas;"
+                        "french": "ne te balade pas;"
                     },
                     {
                         "native": "ǒ sì kā'sī",
-                        "english": "ne fais pas frire."
+                        "french": "ne fais pas frire."
                     }
                 ]
             }
@@ -41,7 +41,7 @@
                 "examples": [
                     {
                         "native": "lēn mbú ì mɑ́ á sɑ̀'",
-                        "english": "dis-lui de venir."
+                        "french": "dis-lui de venir."
                     }
                 ]
             },
@@ -50,7 +50,7 @@
                 "examples": [
                     {
                         "native": "póá [póó á] Kàmèrûn",
-                        "english": "les enfants du Cameroun."
+                        "french": "les enfants du Cameroun."
                     }
                 ]
             },
@@ -59,7 +59,7 @@
                 "examples": [
                     {
                         "native": "pō á mɑ̀ndēē",
-                        "english": "ma main est propre."
+                        "french": "ma main est propre."
                     }
                 ]
             }
@@ -74,7 +74,7 @@
                 "examples": [
                     {
                         "native": "mɑ̄vǒ hɑ́ wúzɑ́ mbú à",
-                        "english": "ma mère m'a donné la nourriture."
+                        "french": "ma mère m'a donné la nourriture."
                     }
                 ]
             },
@@ -83,7 +83,7 @@
                 "examples": [
                     {
                         "native": "sēn à",
-                        "english": "mon ami."
+                        "french": "mon ami."
                     }
                 ]
             },
@@ -92,7 +92,7 @@
                 "examples": [
                     {
                         "native": "ngɑ̌ lén mbú ì, à zhwīè",
-                        "english": "je lui ai dit, il a ri; cf. ǎ."
+                        "french": "je lui ai dit, il a ri; cf. ǎ."
                     }
                 ]
             }
@@ -107,11 +107,11 @@
                 "examples": [
                     {
                         "native": "ǎ nkwé' mbɑ̀ɑ̀",
-                        "english": "elle aime la viande;"
+                        "french": "elle aime la viande;"
                     },
                     {
                         "native": "ǎ ìngén kò",
-                        "english": "il, elle ira au champ."
+                        "french": "il, elle ira au champ."
                     }
                 ]
             }
@@ -126,11 +126,11 @@
                 "examples": [
                     {
                         "native": "mɑ̄vǒ zàb ā",
-                        "english": "ma mère m'a tapé;"
+                        "french": "ma mère m'a tapé;"
                     },
                     {
                         "native": "mɑ̄vǒ mɑ̀ncāk ā",
-                        "english": "ma mère me cherche."
+                        "french": "ma mère me cherche."
                     }
                 ]
             },
@@ -139,19 +139,19 @@
                 "examples": [
                     {
                         "native": "tū ā",
-                        "english": "ma tête;"
+                        "french": "ma tête;"
                     },
                     {
                         "native": "khù ā",
-                        "english": "mon pied; pl. nkhù mǎ : mes pieds;"
+                        "french": "mon pied; pl. nkhù mǎ : mes pieds;"
                     },
                     {
                         "native": "póózū zǎ",
-                        "english": "mes affaires;"
+                        "french": "mes affaires;"
                     },
                     {
                         "native": "pōō mbǎ",
-                        "english": "mes enfants."
+                        "french": "mes enfants."
                     }
                 ]
             },
@@ -160,11 +160,11 @@
                 "examples": [
                     {
                         "native": "fʉ̀ ā Nèè",
-                        "english": "le chef (de) Bana;"
+                        "french": "le chef (de) Bana;"
                     },
                     {
                         "native": "mɑ̄ ā Wènlɑ̀'zhī",
-                        "english": "la mère de Weladji."
+                        "french": "la mère de Weladji."
                     }
                 ]
             },
@@ -173,11 +173,11 @@
                 "examples": [
                     {
                         "native": "ngòò ā Sō'",
-                        "english": "fille originaire de Sō';"
+                        "french": "fille originaire de Sō';"
                     },
                     {
                         "native": "nzhwīē ā Fā'",
-                        "english": "femme originaire de Bafang ou alors femme dont l'époux est de Bafang; plur. á; e.g. ngòò ā Nkɑ̀' : fille originaire de Banka; e.g. ngòò á Nkɑ̀' : filles originaires de Banka."
+                        "french": "femme originaire de Bafang ou alors femme dont l'époux est de Bafang; plur. á; e.g. ngòò ā Nkɑ̀' : fille originaire de Banka; e.g. ngòò á Nkɑ̀' : filles originaires de Banka."
                     }
                 ]
             }

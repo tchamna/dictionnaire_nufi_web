@@ -2,8 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 // import App from './App';
+// import App from './App_firebase_v2';
 import App from './App_firebase';
-// import App from './App_firebase_test';
 
 import reportWebVitals from './reportWebVitals';
 

@@ -96,10 +96,10 @@ def nufi_dict_to_jason_data(file_path):
                 
                 for example in examples[1:]:  # Skip the first split part, as it is the main definition text
                     if ":" in example:
-                        native, english = example.split(":", 1)
+                        native, french = example.split(":", 1)
                         example_sentences.append({
                             "native": native.strip(),
-                            "english": english.strip()
+                            "french": french.strip()
                         })
                 
                 # Add the definition with examples to the word entry
@@ -117,6 +117,65 @@ def nufi_dict_to_jason_data(file_path):
         json.dump(dictionary_data, json_file, ensure_ascii=False, indent=4)
 
     print(f"Data has been successfully converted and saved to {output_file}.")
+
+
+# def nufi_dict_to_jason_data(file_path):
+#     # Load the sheet and relevant columns
+#     df = pd.read_excel(file_path, sheet_name="MainDictionary")
+
+#     # Extract only Nufi → French part (assuming you have a length requirement)
+#     Number_of_Words_from_Nufi_to_French = 8900
+#     Number_of_Words_from_Nufi_to_French = len(df)
+#     df = df.iloc[:Number_of_Words_from_Nufi_to_French][["Keyword", "Pronunciation", "Meaning"]]
+
+#     # Initialize an empty list to store words
+#     dictionary_data = []
+
+#     # Iterate over each row in the DataFrame
+#     for index, row in df.iterrows():
+#         # Initialize a dictionary for each word entry
+#         word_entry = {
+#             "word": str(row["Keyword"]), 
+#             **({"part_of_speech": row["Pronunciation"]} if pd.notna(row["Pronunciation"]) and row["Pronunciation"] else {}),
+#             "definitions": []
+#         }
+
+#         # Process multiple definitions and examples within the Meaning field
+#         if pd.notna(row["Meaning"]):
+#             # Split by numbered definitions (assuming a "<tag_bullet>" delimiter)
+#             definitions = [defn.strip() for defn in row["Meaning"].split("<tag_bullet>") if defn.strip()]
+            
+#             for definition_text in definitions:
+#                 # Separate the definition text and examples using regex for case-insensitive matching of "ex."
+#                 example_sentences = []
+                
+#                 # Use regular expression to split on "ex." or "Ex." with optional whitespace
+#                 examples = re.split(r'\bex\.\s*', definition_text, flags=re.IGNORECASE)
+#                 main_definition = examples[0].strip()  # The first part is the main definition
+                
+#                 for example in examples[1:]:  # Process remaining parts as examples
+#                     if ":" in example:
+#                         native, french = example.split(":", 1)
+#                         example_sentences.append({
+#                             "native": native.strip(),
+#                             "french": french.strip()
+#                         })
+                
+#                 # Add the definition with examples to the word entry
+#                 word_entry["definitions"].append({
+#                     "text": main_definition,
+#                     "examples": example_sentences
+#                 })
+
+#         # Append the word entry to the dictionary data
+#         dictionary_data.append(word_entry)
+
+#     # Save the result to a JSON file
+#     output_file = 'nufi_dictionary_data.json'
+#     with open(output_file, 'w', encoding='utf-8') as json_file:
+#         json.dump(dictionary_data, json_file, ensure_ascii=False, indent=4)
+
+#     print(f"Data has been successfully converted and saved to {output_file}.")
 
 ###############################
 
