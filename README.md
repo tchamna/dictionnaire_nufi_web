@@ -20,6 +20,20 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Supabase Setup
+
+This project uses [Supabase](https://supabase.com/) for backend services. To set up Supabase:
+
+1. Create a Supabase account and project at [app.supabase.io](https://app.supabase.io/)
+2. Create a `.env.local` file in the project root with the following variables:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+   ```
+3. Get your Supabase URL and anon key from your Supabase project dashboard under Settings > API
+4. Restart your development server after adding these environment variables
+5. Visit `/supabase-test` route to verify your connection is working
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
