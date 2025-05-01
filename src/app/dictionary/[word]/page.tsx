@@ -241,7 +241,7 @@ function WordDetailContent() {
                       <h3 className="font-medium mb-2">Examples:</h3>
                       <div className="space-y-2 pl-4">
                         {entry.examples.map((example, idx) => (
-                          <div key={`example-${example.id}`} className="text-sm">
+                          <div key={`example-${example.id || idx}`} className="text-sm">
                             <p>
                               {renderClickableText(example.native_text, playAudio, handleWordDoubleClick)}
                             </p>

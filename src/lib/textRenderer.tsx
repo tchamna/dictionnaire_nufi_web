@@ -14,6 +14,9 @@ export const renderClickableText = (text: string, playAudio?: (word: string) => 
   if (!text) return null;
   
   // Split text by tags and keep the tags as part of the tokens
+  // We use a two-step process to better preserve word integrity:
+  // 1. First split by HTML tags to separate markup from content
+  // 2. Then process the content parts to identify words while preserving compound words
   const tokens = text.split(/(<tag_def>|<\/tag_def>|<b>|<\/b>|<br>|<\/br>|<br\s*\/>|<i>|<\/i>|<u>|<\/u>|<st>|<\/st>|<sup>|<\/sup>|<sub>|<\/sub>|<span[^>]*>|<\/span>|\.\.\.)/);
   
   let inTagDef = false;
@@ -161,16 +164,27 @@ const ClickableWordInline = ({
     const cleanedWord = cleanWord(word);
     if (!cleanedWord) return;
     
+    // Add extensive debugging
+    console.log(`🔍 Checking word: "${word}" (cleaned: "${cleanedWord}")`);
+    
     let isMounted = true;
     
     const checkDictionary = async () => {
       try {
+        // Log before checking
+        console.log(`📚 About to check if "${cleanedWord}" exists in dictionary...`);
+        
         const exists = await checkWordExists(cleanedWord);
+        
+        // Log after checking
+        console.log(`✅ Word "${cleanedWord}" exists in dictionary: ${exists}`);
+        
         if (isMounted) {
+          console.log(`💾 Setting isInDictionary to ${exists} for "${word}"`);
           setIsInDictionary(exists);
         }
       } catch (error) {
-        console.error('Error checking word existence:', error);
+        console.error(`❌ Error checking if "${cleanedWord}" exists:`, error);
       }
     };
     
@@ -205,7 +219,13 @@ const ClickableWordInline = ({
  */
 export const cleanWord = (word: string): string => {
   if (!word) return '';
-  return word.toLowerCase().trim().replace(/[.,;:!?()[\]{}'"«»""'']/g, '');
+  // First trim and lowercase the word
+  let cleaned = word.trim().toLowerCase();
+  // Only remove punctuation from beginning and end, preserving internal characters
+  cleaned = cleaned.replace(/^[.,;:!?()[\]{}'"«»“”‘’\s]+|[.,;:!?()[\]{}'"«»“”‘’\s]+$/g, '');
+  // Log the cleaning process
+  console.log(`🧹 Cleaning word: "${word}" -> "${cleaned}"`);
+  return cleaned;
 };
 
 /**

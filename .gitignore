@@ -42,4 +42,5 @@ next-env.d.ts
 
 # project specific
 action_plan.md
+PROJECT_OVERVIEW.md
 old_project/
