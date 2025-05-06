@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAudioUrl, getAudioKeyForWord } from '@/services/audioService';
+import { getAudioUrl, getAudioKeyForWord, checkAudioExistsCached } from '@/services/audioService';
 import { Loader2 } from 'lucide-react';
 import { checkWordExists, preloadWordExistence } from '@/services/wordCheckService';
 
@@ -158,8 +158,9 @@ const ClickableWordInline = ({
   const [isLoading, setIsLoading] = useState(false);
   const [audioElement] = useState(() => typeof window !== 'undefined' ? new Audio() : null);
   const [isInDictionary, setIsInDictionary] = useState(false);
+  const [hasAudio, setHasAudio] = useState(false);
   
-  // Check if the word exists in the dictionary
+  // Check if the word exists in the dictionary and if it has audio
   useEffect(() => {
     const cleanedWord = cleanWord(word);
     if (!cleanedWord) return;
@@ -182,6 +183,21 @@ const ClickableWordInline = ({
         if (isMounted) {
           console.log(`💾 Setting isInDictionary to ${exists} for "${word}"`);
           setIsInDictionary(exists);
+          
+          // If the word exists in the dictionary, check if it has audio
+          if (exists) {
+            try {
+              console.log(`🔊 Checking if audio exists for "${cleanedWord}"...`);
+              const audioExists = await checkAudioExistsCached(cleanedWord);
+              console.log(`🔊 Audio exists for "${cleanedWord}": ${audioExists}`);
+              
+              if (isMounted) {
+                setHasAudio(audioExists);
+              }
+            } catch (audioError) {
+              console.error(`❌ Error checking if audio exists for "${cleanedWord}":`, audioError);
+            }
+          }
         }
       } catch (error) {
         console.error(`❌ Error checking if "${cleanedWord}" exists:`, error);
@@ -195,19 +211,72 @@ const ClickableWordInline = ({
     };
   }, [word]);
 
-  // Disabled audio playback for now - will be implemented later
+  // Play audio for the word
   const playAudio = async () => {
-    // Audio playback is disabled until fully implemented
-    console.log('Audio playback is currently disabled');
+    if (!isInDictionary || isPlaying || !hasAudio) return;
+    
+    try {
+      setIsLoading(true);
+      const cleanedWord = cleanWord(word);
+      const audioKey = getAudioKeyForWord(cleanedWord);
+      console.log(`🔊 Getting audio for word: "${cleanedWord}", key: "${audioKey}"`);
+      
+      const audioUrl = await getAudioUrl(audioKey);
+      console.log(`🔊 Audio URL obtained: ${audioUrl}`);
+      
+      if (audioElement) {
+        audioElement.src = audioUrl;
+        audioElement.onplay = () => setIsPlaying(true);
+        audioElement.onended = () => {
+          setIsPlaying(false);
+          setIsLoading(false);
+        };
+        audioElement.onerror = (e) => {
+          console.error(`❌ Error playing audio for word: ${word}`, e);
+          setIsPlaying(false);
+          setIsLoading(false);
+          // If we get an error playing audio, update hasAudio state
+          setHasAudio(false);
+        };
+        
+        try {
+          await audioElement.play();
+        } catch (playError) {
+          console.error(`❌ Error playing audio: ${playError}`);
+          setIsPlaying(false);
+          setIsLoading(false);
+          // If we get an error playing audio, update hasAudio state
+          setHasAudio(false);
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Error loading audio for word: ${word}`, error);
+      setIsLoading(false);
+      // If we get an error loading audio, update hasAudio state
+      setHasAudio(false);
+    }
   };
 
   return (
     <span
       className={`inline-flex items-center ${className} cursor-pointer hover:text-primary relative ${isInDictionary ? 'border-b border-dotted border-primary/30' : ''}`.trim()}
+      onClick={isInDictionary && hasAudio ? playAudio : undefined}
       onDoubleClick={onDoubleClick && isInDictionary ? () => onDoubleClick(word) : undefined}
-      title={isInDictionary ? 'Double-click to view definition' : ''}
+      title={isInDictionary ? (hasAudio ? 'Click to hear pronunciation, double-click to view definition' : 'Double-click to view definition') : ''}
     >
       {word}
+      {isInDictionary && hasAudio && (
+        <button 
+          className="ml-1 text-xs opacity-50 hover:opacity-100 focus:outline-none"
+          onClick={(e) => {
+            e.stopPropagation();
+            playAudio();
+          }}
+          aria-label={isPlaying ? 'Playing audio' : 'Play pronunciation'}
+        >
+          {isLoading ? '🔄' : isPlaying ? '🔊' : '🔈'}
+        </button>
+      )}
     </span>
   );
 };
