@@ -1,5 +1,6 @@
 import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getAudioFilename, hasAudio } from '@/data/audioMapping';
 
 // Initialize the S3 client
 const s3Client = new S3Client({
@@ -20,15 +21,15 @@ const bucketName = process.env.NEXT_PUBLIC_S3_BUCKET_NAME || '';
  */
 export async function getAudioUrl(key: string): Promise<string> {
   try {
-    // Extract the word from the key (remove 'audio/words/' prefix and '.mp3' suffix)
-    const wordMatch = key.match(/audio\/words\/(.+)\.mp3$/);
-    if (!wordMatch || !wordMatch[1]) {
-      throw new Error(`Invalid audio key format: ${key}`);
+    // Extract the filename from the key (remove '.mp3' suffix if present)
+    let filename = key;
+    if (filename.endsWith('.mp3')) {
+      filename = filename.slice(0, -4);
     }
     
-    const word = wordMatch[1];
     // Use our API route instead of direct S3 access to avoid CORS issues
-    return `/api/audio/${encodeURIComponent(word)}`;
+    // The API route expects just the filename without extension
+    return `/api/audio/${encodeURIComponent(filename)}`;
   } catch (error) {
     console.error('Error generating audio URL:', error);
     throw error;
@@ -38,12 +39,22 @@ export async function getAudioUrl(key: string): Promise<string> {
 /**
  * Construct the S3 key for a word's audio file
  * @param word The word to get audio for
- * @returns The S3 key for the audio file
+ * @returns The S3 key for the audio file or null if no mapping exists
  */
-export function getAudioKeyForWord(word: string): string {
-  // Customize this based on your S3 bucket structure
-  // Example: audio/words/example.mp3
-  return `audio/words/${word.toLowerCase().trim()}.mp3`;
+export function getAudioKeyForWord(word: string): string | null {
+  const cleanedWord = word.toLowerCase().trim();
+  
+  // Check if we have a mapping for this word
+  const audioFilename = getAudioFilename(cleanedWord);
+  if (audioFilename) {
+    // Audio files are in the root of the bucket
+    return `${audioFilename}.mp3`;
+  }
+  
+  // If no mapping exists, return null instead of a fallback
+  // This ensures we don't try to access non-existent files
+  console.log(`No audio mapping found for word: "${cleanedWord}"`); 
+  return null;
 }
 
 /**
@@ -68,8 +79,13 @@ export async function checkAudioExists(word: string): Promise<boolean> {
   }
 }
 
+// We now use the mapping system in data/audioMapping.ts instead of a hardcoded list
+
 // Cache for audio existence to reduce API calls
 const audioExistsCache = new Map<string, boolean>();
+
+// Track currently playing audio
+let currentAudio: HTMLAudioElement | null = null;
 
 /**
  * Check if audio exists for a word, using cache when possible
@@ -84,11 +100,194 @@ export async function checkAudioExistsCached(word: string): Promise<boolean> {
     return audioExistsCache.get(cleanedWord) || false;
   }
   
-  // Check if audio exists
-  const exists = await checkAudioExists(cleanedWord);
+  // Check if the word has a mapping to an audio file
+  // This uses the audioMapping.ts file to determine if audio exists
+  if (hasAudio(cleanedWord)) {
+    console.log(`Audio exists for "${cleanedWord}" according to mapping`);
+    audioExistsCache.set(cleanedWord, true);
+    return true;
+  }
   
-  // Cache the result
-  audioExistsCache.set(cleanedWord, exists);
+  // If we don't have a mapping, we know there's no audio
+  // No need to check the API since we now have a complete mapping
+  console.log(`No audio mapping found for "${cleanedWord}"`);
+  audioExistsCache.set(cleanedWord, false);
+  return false;
+}
+
+// Audio element cache to avoid creating new elements
+currentAudio = null;
+
+// Function to safely clean up audio resources
+function cleanupAudio() {
+  if (currentAudio) {
+    // Remove all event listeners to prevent memory leaks
+    currentAudio.onplay = null;
+    currentAudio.onerror = null;
+    currentAudio.onended = null;
+    currentAudio.onstalled = null;
+    currentAudio.onwaiting = null;
+    currentAudio.oncanplay = null;
+    currentAudio.onloadstart = null;
+    
+    // Pause and clean up
+    currentAudio.pause();
+    currentAudio.removeAttribute('src');
+    currentAudio.load();
+    
+    // For modern browsers, this helps with garbage collection
+    if ('remove' in HTMLMediaElement.prototype) {
+      (currentAudio as any).remove();
+    }
+    
+    currentAudio = null;
+  }
+}
+
+// Function to log audio state for debugging
+function logAudioState(audio: HTMLAudioElement, word: string, eventName: string) {
+  console.log(`🔊 [${eventName}] State for "${word}":`, {
+    readyState: audio.readyState,
+    networkState: audio.networkState,
+    error: audio.error,
+    src: audio.currentSrc,
+    currentTime: audio.currentTime,
+    duration: audio.duration,
+    paused: audio.paused,
+    ended: audio.ended,
+    seeking: audio.seeking,
+  });
+}
+
+/**
+ * Play audio for a word
+ * @param word The word to play audio for
+ * @returns A promise that resolves when the audio starts playing
+ */
+export async function playAudioForWord(word: string): Promise<boolean> {
+  if (!word) {
+    console.log('🔇 No word provided for audio playback');
+    return false;
+  }
   
-  return exists;
+  try {
+    // Clean the word to match our mapping
+    const cleanedWord = word.toLowerCase().trim();
+    
+    // Clean up any existing audio first
+    cleanupAudio();
+    
+    console.log(`🔊 Attempting to play audio for "${cleanedWord}"`);
+    
+    // First check if we have a mapping for this word
+    const audioFilename = getAudioFilename(cleanedWord);
+    if (!audioFilename) {
+      console.log(`🔇 No audio mapping found for "${cleanedWord}"`);
+      return false;
+    }
+    
+    console.log(`🔊 Found audio mapping: "${cleanedWord}" -> "${audioFilename}"`);
+    
+    // Use our API proxy instead of direct S3 URL to handle CORS and authentication
+    const audioUrl = `/api/audio/${encodeURIComponent(cleanedWord)}`;
+    console.log(`🔊 Using API URL: ${audioUrl}`);
+    
+    // Create a new audio element
+    const audio = new Audio();
+    currentAudio = audio;
+    
+    // Set up event handlers with proper cleanup
+    const handleError = (event: Event | string) => {
+      // Don't log errors if we've already cleaned up
+      if (!currentAudio) return;
+      
+      const errorMessage = event instanceof Error ? event.message : 
+                         typeof event === 'string' ? event : 
+                         (event as any).message || 'Unknown error';
+      
+      console.error(`🔊 Error playing audio for "${cleanedWord}":`, errorMessage);
+      console.error(`🔊 Audio URL that failed: ${audioUrl}`);
+      logAudioState(audio, cleanedWord, 'ERROR');
+      cleanupAudio();
+    };
+    
+    const handleEnded = () => {
+      console.log(`🔊 Finished playing audio for "${cleanedWord}"`);
+      cleanupAudio();
+    };
+    
+    // Type assertion to handle the error event
+    audio.onerror = handleError as (event: Event | string) => void;
+    audio.onended = handleEnded;
+    
+    // Additional debugging events
+    audio.onloadstart = () => {
+      console.log(`🔊 Audio loading started for "${cleanedWord}"`);
+      logAudioState(audio, cleanedWord, 'LOAD_START');
+    };
+    
+    audio.oncanplay = () => {
+      console.log(`🔊 Audio can play for "${cleanedWord}"`);
+      logAudioState(audio, cleanedWord, 'CAN_PLAY');
+    };
+    
+    audio.onstalled = () => {
+      console.error(`🔊 Playback stalled for "${cleanedWord}"`);
+      logAudioState(audio, cleanedWord, 'STALLED');
+    };
+    
+    audio.onwaiting = () => {
+      console.log(`🔊 Waiting for audio data for "${cleanedWord}"`);
+      logAudioState(audio, cleanedWord, 'WAITING');
+    };
+    
+    // Set the source and start playback
+    try {
+      // First, ensure the URL is valid
+      if (!audioUrl || audioUrl === '/true' || audioUrl.includes('undefined')) {
+        throw new Error(`Invalid audio URL: ${audioUrl}`);
+      }
+      
+      // Set the source and preload metadata
+      audio.preload = 'metadata';
+      audio.src = audioUrl;
+      
+      // Load the audio first to catch any loading errors
+      await new Promise<void>((resolve, reject) => {
+        const onCanPlay = () => {
+          audio.removeEventListener('canplay', onCanPlay);
+          audio.removeEventListener('error', onError);
+          resolve();
+        };
+        
+        const onError = (e: Event) => {
+          audio.removeEventListener('canplay', onCanPlay);
+          audio.removeEventListener('error', onError);
+          reject(new Error(`Failed to load audio: ${(e as any).message || 'Unknown error'}`));
+        };
+        
+        audio.addEventListener('canplay', onCanPlay, { once: true });
+        audio.addEventListener('error', onError, { once: true });
+      });
+      
+      console.log(`🔊 Starting playback for "${cleanedWord}"`);
+      await audio.play();
+      console.log(`🔊 Playback started for "${cleanedWord}"`);
+      return true;
+    } catch (error) {
+      console.error(`🔊 Playback failed for "${cleanedWord}":`, error);
+      cleanupAudio();
+      return false;
+    }
+  } catch (error) {
+    console.error(`🔊 Error in playAudioForWord for "${word}":`, error);
+    cleanupAudio();
+    return false;
+  }
+}
+
+// Clean up audio when the page unloads
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', cleanupAudio);
+  window.addEventListener('pagehide', cleanupAudio);
 }

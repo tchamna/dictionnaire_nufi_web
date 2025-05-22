@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { cleanWord } from '@/lib/clafricaMapping';
+import { hasAudio } from '@/data/audioMapping';
 
 // Cache for words that exist in the dictionary to reduce database queries
 const wordExistsCache = new Map<string, boolean>();
@@ -23,6 +24,14 @@ export async function checkWordExists(word: string): Promise<boolean> {
     const exists = wordExistsCache.get(cleanedWord) || false;
     console.log(`📂 Cache hit for "${cleanedWord}": ${exists}`);
     return exists;
+  }
+  
+  // Special case: Check if the word has audio mapping
+  // This ensures words with audio are always clickable
+  if (hasAudio(cleanedWord)) {
+    console.log(`🔊 Word "${cleanedWord}" has audio mapping, marking as existing`);
+    wordExistsCache.set(cleanedWord, true);
+    return true;
   }
   
   try {
@@ -56,24 +65,47 @@ export async function checkWordExists(word: string): Promise<boolean> {
       } else {
         console.log(`❌ No case-insensitive match found for "${cleanedWord}"`);
         
+        // Try a more flexible approach for words with diacritical marks
+        // First, normalize the word by removing all diacritical marks
+        const normalizedWord = cleanedWord.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        
+        if (normalizedWord !== cleanedWord) {
+          console.log(`🔍 Trying normalized match without diacritics: "${normalizedWord}"`);
+          const { data: ndata, error: nerror } = await supabase
+            .from('definitions')
+            .select('definition_index, word')
+            .ilike('word', normalizedWord)
+            .limit(10);
+          
+          if (!nerror && ndata && ndata.length > 0) {
+            exists = true;
+            console.log(`✅ Found normalized match for "${cleanedWord}": "${ndata[0].word}"`);
+          }
+        }
+        
         // If still no match, try a partial match for words with special characters
-        // This helps with words like "mbɑ̄i" that might be stored slightly differently
-        const baseWord = cleanedWord.replace(/[^a-z]/g, '%');
-        if (baseWord !== cleanedWord) {
+        if (!exists) {
+          // Create a pattern where each character is optional
+          // This helps with words like "mba" that might be part of longer words
+          const baseWord = cleanedWord.replace(/[^a-z]/g, '%');
           console.log(`🔍 Trying partial match with pattern: "${baseWord}"`);
+          
           const { data: pdata, error: perror } = await supabase
             .from('definitions')
             .select('definition_index, word')
-            .ilike('word', baseWord)
-            .limit(10);
+            .ilike('word', `%${baseWord}%`)
+            .limit(20);
           
           if (!perror && pdata && pdata.length > 0) {
-            // Check if any of the returned words are close matches
+            // Check if any of the returned words are close matches or contain our word
             const matchedWord = pdata.find(item => {
-              // Compare the alphanumeric characters of both words
-              const itemBase = item.word.replace(/[^a-z0-9]/gi, '');
-              const cleanedBase = cleanedWord.replace(/[^a-z0-9]/gi, '');
-              return itemBase.toLowerCase() === cleanedBase.toLowerCase();
+              // Check if the item contains our word as a substring
+              const itemNormalized = item.word.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+              const cleanedNormalized = normalizedWord.toLowerCase();
+              
+              return itemNormalized === cleanedNormalized || 
+                     itemNormalized.includes(cleanedNormalized) || 
+                     cleanedNormalized.includes(itemNormalized);
             });
             
             if (matchedWord) {

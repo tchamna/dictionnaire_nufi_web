@@ -221,10 +221,16 @@ const ClickableWordInline = ({
       const audioKey = getAudioKeyForWord(cleanedWord);
       console.log(`🔊 Getting audio for word: "${cleanedWord}", key: "${audioKey}"`);
       
-      const audioUrl = await getAudioUrl(audioKey);
-      console.log(`🔊 Audio URL obtained: ${audioUrl}`);
+      let audioUrl = null;
+      if (audioKey !== null) {
+        audioUrl = await getAudioUrl(audioKey);
+        // Handle the potential null value in the template string
+        console.log(`🔊 Audio URL obtained: ${audioUrl === null ? 'null' : audioUrl}`);
+      } else {
+        console.log('🔊 No audio URL obtained because audioKey is null');
+      }
       
-      if (audioElement) {
+      if (audioElement && audioUrl) {
         audioElement.src = audioUrl;
         audioElement.onplay = () => setIsPlaying(true);
         audioElement.onended = () => {

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cleanWord } from '@/lib/textRenderer';
-import { getAudioUrl, getAudioKeyForWord } from '@/services/audioService';
+import { getAudioFilename, hasAudio } from '@/data/audioMapping';
 
 interface AudioPlayerProps {
   word: string;
@@ -66,13 +66,36 @@ export function AudioPlayer({
       // Get the cleaned word
       const cleanedWord = cleanWord(word);
       
-      // If we already have a URL cached and it's for the same word, use it
+      // Check if we have audio for this word
+      if (!hasAudio(cleanedWord)) {
+        console.log(`No audio available for "${cleanedWord}"`);
+        setHasError(true);
+        return;
+      }
+      
+      // If we already have a URL cached, use it
       if (!audioUrlRef.current) {
-        // Get the S3 key for the audio file
-        const audioKey = getAudioKeyForWord(cleanedWord);
+        // Get the audio filename from our mapping
+        const audioFilename = getAudioFilename(cleanedWord);
+        if (!audioFilename) {
+          console.log(`No audio filename found for "${cleanedWord}"`);
+          setHasError(true);
+          return;
+        }
         
-        // Get a presigned URL from S3
-        audioUrlRef.current = await getAudioUrl(audioKey);
+        // Construct the direct S3 URL
+        const region = process.env.NEXT_PUBLIC_AWS_REGION || 'us-east-1';
+        const bucket = process.env.NEXT_PUBLIC_S3_BUCKET_NAME || 'dictionnaire-nufi-audio';
+        
+        // Try using the CloudFront distribution URL if available
+        if (process.env.NEXT_PUBLIC_CLOUDFRONT_URL) {
+          audioUrlRef.current = `${process.env.NEXT_PUBLIC_CLOUDFRONT_URL}/${audioFilename}.mp3`;
+        } else {
+          // Fallback to direct S3 URL
+          audioUrlRef.current = `https://${bucket}.s3.${region}.amazonaws.com/${audioFilename}.mp3`;
+        }
+        
+        console.log(`Playing audio from URL: ${audioUrlRef.current}`);
       }
       
       // Set source and play

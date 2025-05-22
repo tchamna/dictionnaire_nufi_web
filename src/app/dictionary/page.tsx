@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search } from 'lucide-react';
+import { Search, Volume2 } from 'lucide-react';
 import { getDefinitions, searchDictionaryEntries } from '@/services/dictionaryService';
 import { getExamplesByDefinitionId } from '@/services/examplesService';
 import {
@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { renderClickableText } from '@/lib/textRenderer';
 import { applyClafricaMapping, cleanWord } from '@/lib/clafricaMapping';
+import { hasAudio } from '@/data/audioMapping';
+import { playAudioForWord } from '@/services/audioService';
 
 // Type for examples
 type Example = {
@@ -236,12 +238,71 @@ function DictionaryContent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchMode, setSearchMode] = useState<'keyword-only' | 'all-fields'>('all-fields');
   
+  // State for audio playback
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentPlayingWord, setCurrentPlayingWord] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   // Function to play audio if available
-  const playAudio = (word: string) => {
+  const playAudio = useCallback(async (word: string) => {
     console.log(`Playing audio for: ${word}`);
-    // This is just a placeholder function for the text renderer
-    // The actual audio playback is handled by the AudioPlayer component
-  };
+    
+    // If already playing this word, stop it
+    if (currentPlayingWord === word && isPlaying) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setIsPlaying(false);
+      setCurrentPlayingWord(null);
+      return;
+    }
+    
+    // If playing a different word, stop current playback
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    
+    setCurrentPlayingWord(word);
+    setAudioError(null);
+    
+    try {
+      // Use the audio service to play the audio
+      const success = await playAudioForWord(word);
+      
+      if (!success) {
+        throw new Error('Failed to play audio for word');
+      }
+      
+      // Since playAudioForWord handles the audio playback internally,
+      // we just need to update our UI state
+      setIsPlaying(true);
+      
+      // Set a timeout to simulate the audio playing and ending
+      // In a real implementation, you would want to hook into the actual audio events
+      setTimeout(() => {
+        setIsPlaying(false);
+        setCurrentPlayingWord(null);
+      }, 3000); // Assume 3 seconds for audio playback
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      setAudioError('Error playing audio');
+      setIsPlaying(false);
+      setCurrentPlayingWord(null);
+    }
+  }, [currentPlayingWord, isPlaying]);
+  
+  // Clean up audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // Function to handle word double click - navigate to word definition
   const handleWordDoubleClick = (clickedWord: string) => {
@@ -417,13 +478,39 @@ function DictionaryContent() {
             {entries.map((entry) => (
               <Card 
                 key={entry.id} 
-                className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => handleViewFullDetails(entry)}
+                className="overflow-hidden hover:shadow-md transition-shadow"
               >
-                <CardContent className="p-4 flex justify-center">
-                  <h3 className="text-xl font-semibold text-primary">
+                <CardContent className="p-4 flex justify-center items-center gap-2">
+                  <h3 
+                    className="text-xl font-semibold text-primary cursor-pointer"
+                    onClick={() => handleViewFullDetails(entry)}
+                    onDoubleClick={() => handleWordDoubleClick(entry.word)}
+                  >
                     {entry.word}
                   </h3>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      playAudio(entry.word);
+                    }}
+                    className={`p-1 rounded-full transition-colors ${
+                      hasAudio(entry.word) 
+                        ? 'hover:bg-muted text-primary' 
+                        : 'text-muted-foreground cursor-not-allowed'
+                    }`}
+                    disabled={!hasAudio(entry.word)}
+                    title={hasAudio(entry.word) 
+                      ? 'Click to hear pronunciation' 
+                      : 'No audio available'}
+                  >
+                    <Volume2 
+                      className={`h-4 w-4 ${
+                        currentPlayingWord === entry.word && isPlaying 
+                          ? 'text-blue-500 animate-pulse' 
+                          : ''
+                      }`} 
+                    />
+                  </button>
                 </CardContent>
               </Card>
             ))}
